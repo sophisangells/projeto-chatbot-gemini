@@ -1,0 +1,152 @@
+import streamlit as st
+from google import genai
+from google.genai import types
+
+
+def converter_para_gemini(historico):
+    mensagens_gemini = []
+
+    for mensagem in historico:
+        papel = mensagem["role"]
+        conteudo = mensagem["content"]
+
+        papel_gemini = "model" if papel == "assistant" else "user"
+
+        mensagens_gemini.append(
+            types.Content(
+                role=papel_gemini,
+                parts=[types.Part.from_text(text=conteudo)]
+            )
+        )
+
+    return mensagens_gemini
+
+
+def gerar_resposta():
+    try:
+        resposta = cliente.models.generate_content(
+            model=MODELO,
+            contents=converter_para_gemini(st.session_state.historico),
+            config=types.GenerateContentConfig(
+                system_instruction=INSTRUCAO_SISTEMA,
+                temperature=0.7,
+            )
+        )
+
+        return resposta.text
+
+    except Exception as erro:
+        return f"Erro ao gerar resposta: {erro}"
+
+
+MODELO = "gemini-2.5-flash"
+
+INSTRUCAO_SISTEMA = """
+Você é uma consultora virtual especializada em moda e estilo.
+
+Suas funções são:
+- Dar dicas de moda para diferentes ocasiões.
+- Sugerir combinações de roupas.
+- Recomendar cores, estilos e acessórios.
+- Ajudar usuários a encontrar seu estilo pessoal.
+- Explicar tendências de moda atuais.
+- Ser educada, simpática e criativa.
+
+Sempre responda de forma clara e inspiradora.
+"""
+
+# Configuração da página
+st.set_page_config(
+    page_title="Fashion Style AI",
+    page_icon="👗"
+)
+st.set_page_config(
+page_title="🎀 Gyaru Fashion AI",
+page_icon="💖",
+layout="centered"
+)
+
+st.markdown("""
+
+<style>
+.stApp {
+    background: linear-gradient(180deg, #fff0f7, #ffe4f2);
+}
+
+h1 {
+    color: #ff69b4;
+    text-align: center;
+}
+
+.stChatMessage {
+    border-radius: 15px;
+}
+
+.stTextInput input {
+    border-radius: 20px;
+}
+
+div[data-testid="stSidebar"] {
+    background-color: #ffd6eb;
+}
+</style>
+
+""", unsafe_allow_html=True)
+
+st.title("🎀 Gyaru Fashion AI ✨")
+st.caption("💖 Sua melhor amiga para dicas de moda, beleza e estilo 💖")
+
+st.title("👗 Fashion Style AI")
+st.caption("Sua consultora virtual de moda e estilo")
+
+# Chave da API
+chave_api = st.sidebar.text_input(
+    "Digite sua chave da API Gemini",
+    type="password"
+)
+
+if not chave_api:
+    st.warning("Insira sua chave de API na barra lateral.")
+    st.stop()
+
+cliente = genai.Client(api_key=chave_api)
+
+# Histórico
+if "historico" not in st.session_state:
+    st.session_state.historico = []
+
+# Botão para limpar conversa
+if st.sidebar.button("🗑️ Limpar conversa"):
+    st.session_state.historico = []
+    st.rerun()
+
+# Exibir histórico
+for mensagem in st.session_state.historico:
+    with st.chat_message(mensagem["role"]):
+        st.markdown(mensagem["content"])
+
+# Entrada do usuário
+entrada_usuario = st.chat_input(
+    "Pergunte sobre moda, tendências ou combinações..."
+)
+
+if entrada_usuario:
+
+    st.session_state.historico.append({
+        "role": "user",
+        "content": entrada_usuario
+    })
+
+    with st.chat_message("user"):
+        st.markdown(entrada_usuario)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Montando seu look... 👗"):
+            resposta_ia = gerar_resposta()
+
+        st.markdown(resposta_ia)
+
+    st.session_state.historico.append({
+        "role": "assistant",
+        "content": resposta_ia
+    })
